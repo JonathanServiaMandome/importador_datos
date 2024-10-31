@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import bsddb
 import os
 import re
 from StringIO import StringIO
@@ -311,7 +312,10 @@ def bkopen(archivo, forma='c', tipo='b', borrar='', inx=(), cache=1, huf=0, tmk=
     if tipo == 'h':
         tp = DB_HASH
     d = DBcp(archivo, borrar, inx, cache, huf, tmk)
-    d.open(archivo, dbtype=tp, flags=fm | DB_THREAD)
+    try:
+        d.open(archivo, dbtype=tp, flags=fm | DB_THREAD)
+    except bsddb.db.DBNoSuchFileError as e:
+        raise ValueError("No existe la tabla "+archivo)
     return d
 
 
@@ -759,7 +763,7 @@ class DBcpCursor():
         return
 
 
-def sanitize(text):
+def sanitize(text, limit=20):
     if type(text) == str:
         text = text.decode('latin1').encode('utf8')
         text = text.lower()
@@ -803,7 +807,7 @@ def sanitize(text):
     text = text.replace('___', '_')
     text = text.replace('__', '_')
 
-    text = text[:20]
+    text = text[:limit]
 
     if text.endswith('_'):
         text = text[:-1]
@@ -823,6 +827,11 @@ def sanitize(text):
 
 
 def stripRtf(text, res='plain'):
+    if type(text) == list:
+        return '\n'.join(text)
+    if not text.startswith('{\\rtf1'):
+        return text
+
     pattern = re.compile(r"\\([a-z]{1,32})(-?\d{1,10})?[ ]?|\\'([0-9a-f]{2})|\\([^a-z])|([{}])|[\r\n]+|(.)", re.I)
     # control words which specify a "destionation".
     destinations = frozenset((
@@ -1021,7 +1030,7 @@ def stripRtf(text, res='plain'):
             text += ''.join(dc[id_bloq, bloque][id_element, etiqueta, arg])
 
     if res == 'plain':
-        return text.encode('latin-1')
+        return text#.encode('latin-1')
 
     else:
         return dc

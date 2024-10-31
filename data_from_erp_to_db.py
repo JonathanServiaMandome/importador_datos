@@ -1,9 +1,6 @@
 # -*- coding: utf-8 -*-
 import codecs
 import json
-import os
-import unicodedata
-from numpy import unicode
 
 from functions import *
 import pyodbc
@@ -37,11 +34,9 @@ class Database:
         cursor.execute('DELETE FROM empresas_%s' % table.lower())
 
     def insert(self, table, campos, values):
-        cursor = self.cursor
         x = ', '.join(values)
-
         q = "INSERT INTO empresas_%s (%s) values (%s)" % (table.lower(), ', '.join(campos), x)
-        #print(q)
+
         self.cursor.execute(q)
         #self.connection.commit()
 
@@ -233,15 +228,36 @@ def import_types_esp(data_base):
 
 
 if __name__ =='__main__':
-    db = Database()
-    lineas = codecs.open(os.getcwd()+'\\import1.sql', 'r', 'utf8').readlines()
-    for sql in lineas:
-        sql = sql.strip()
-        try:
-            db.query(sql+' ON CONFLICT (id) DO NOTHING')
-        except Exception as e:
-            raise ValueError(sql, e)
-
+    PATH = 'D:/Server/Applications/tesein/Dcts'
+    file_rg = bkopen(PATH, huf=1)
+    archivo = 'facturas-e'
+    nombre, n, campos, n2, n3, n4, n5, n6, n7, n8, n9, n10, n11 = file_rg[archivo]
+    i=0
+    ls=[]
+    ls2=[]
+    ls3=[]
+    for ln in campos:
+        campo, deno, fmt, cols, rels, form = ln
+        if ln[5]:continue
+        i+=1
+        print([i-1]+ln)
+        if cols:
+            n = campo.lower()
+            ls3.append(n)
+        else:
+            n = sanitize(ln[1], 20)
+            ls2.append(n)
+        ls.append(n)
+    print(', '.join(ls))
+    print('\n')
+    ls2.sort()
+    tx = "            u'id': sanitize(n),\n"
+    tx = "            u'codigo': sanitize(idx),\n"
+    tx += "            u'empresa_id': empresa_id,\n"
+    tx += "            u'': sanitize("
+    print(tx+"),\n            u'': sanitize(".join(ls2)+')')
+    print('\n')
+    print(', '.join(ls3))
 
 
 
