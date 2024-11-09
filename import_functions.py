@@ -52,18 +52,19 @@ class Database:
         self.dc_db['relaciones_faltan'] = self.dc_db.get('relaciones_faltan', list())
 
     def close(self):
-        path= os.getcwd() + '\\json\\'
-        if not os.path.isdir(path):
-            os.makedirs(path)
-        path +='import%d.json' % self.level
-        codecs.open(path, 'w', encoding="utf-8").write(json.dumps(self.dc_db, indent=4, encoding='latin-1'))
-        '''
-        path=os.getcwd() +'\\import%d.sql' % self.level
-        tx = '\n'.join(self.deletes)
-        tx += '\n'
-        tx += '\n'.join(self.inserts)
-        codecs.open(path, 'w', encoding="utf-8").write(tx)
-        '''
+        if self.level != 0:
+            path= os.getcwd() + '\\json\\'
+            if not os.path.isdir(path):
+                os.makedirs(path)
+            path +='import%d.json' % self.level
+            codecs.open(path, 'w', encoding="utf-8").write(json.dumps(self.dc_db, indent=4, encoding='latin-1'))
+            '''
+            path=os.getcwd() +'\\import%d.sql' % self.level
+            tx = '\n'.join(self.deletes)
+            tx += '\n'
+            tx += '\n'.join(self.inserts)
+            codecs.open(path, 'w', encoding="utf-8").write(tx)
+            '''
 
 
     def reset(self):
@@ -82,6 +83,42 @@ class Database:
             for sql in sqls:
                 cursor.execute(sql)
                 self.deletes.append(sql)
+
+    def view_blank_tables(self):
+        cursor = self.cursor
+        cursor.execute("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public';")
+        i = 1
+        for ln in cursor.fetchall():
+            table = ln[0]
+            if not table.startswith('empresas'):
+                continue
+            saltar = [
+                'empresas_llamada',
+                'empresas_swift',
+                'empresas_arqueo',
+                'empresas_transportistamatricula',
+                'empresas_articuloregistroapp',
+                'empresas_historicomodificacion',
+                'empresas_recuento',
+                'empresas_recuentolinea',
+                'empresas_vehiculomantenimieno',
+                'empresas_email',
+                'empresas_costesempleado',
+                'empresas_pagoalbarancompra',
+                'empresas_marcariesgo',
+                'empresas_vehiculo',
+                '',
+            ]
+            if table in saltar:
+                continue
+            sql = "SELECT count(id) FROM " + table
+            cursor.execute(sql)
+            r = cursor.fetchall()
+            res = r[0][0]
+            if res == 0:
+                print(i, table, res)
+                i += 1
+
 
     def select(self, q):
         cursor = self.cursor
@@ -1121,7 +1158,7 @@ def insert_provincias(data_base):
         n_provincia = x + 1
         if n_provincia % 10 == 0 or n_provincia == l:
             log(nombre, l, n_provincia)
-        data_base.dc_db[table_db][nombre] = n_provincia
+        data_base.dc_db[table_db][idx] = n_provincia
 
         dc_pais = {
             u'id': sanitize(n_provincia),
@@ -1656,7 +1693,7 @@ def insert_checklists(data_base):
     n_chl = 0
     for idx in idxs:
         n_chl += 1
-        if n_chl % 100 == 0 or n_chl == l:
+        if n_chl % 1000 == 0 or n_chl == l:
             log(sanitize(idx), l, n_chl)
         data_base.dc_db[table_erp][idx] = n_chl
         nombre, lnas, norm, eti, tec_ls = file_rg[idx]
@@ -1687,7 +1724,7 @@ def insert_checklists(data_base):
     log('valores predefinidos ' + table_db, l)
     for value in valores_predefinidos:
         i += 1
-        if i % 100 == 0 or i == l:
+        if i % 1500 == 0 or i == l:
             log('', l, i)
         idh, padre, valor, orden = value
         dc_vp = {
@@ -1980,7 +2017,7 @@ def insert_marcas(data_base):
     data_base.dc_db[table_erp] = dict()
     for idx in idxs:
         n_marca += 1
-        if n_marca % 100 == 0 or n_marca == l:
+        if n_marca % 200 == 0 or n_marca == l:
             log(sanitize(idx), l, n_marca)
 
         data_base.dc_db[table_erp][idx] = n_marca
@@ -2099,17 +2136,18 @@ def insert_tipos_contratos(n_tipo, data_base):
 def insert_codigo_postal(data_base):
     table_db, table_erp, file_rg, idxs, l, n_registro = get_data(data_base, 'codigopostal', 'postal')
     log(table_db, l)
-
+    s=0
     n_cp = 0
     for idx in idxs:
         pais, pob, prv, otro, ca = file_rg[idx]
         if len(idx) != 5:
             continue
         if idx[:2] not in data_base.dc_db['provincia'].keys():
+            s+=1
             continue
 
         n_cp += 1
-        if n_cp % 100 == 0 or n_cp == l:
+        if n_cp % 1500 == 0 or n_cp == l:
             log(sanitize(idx), l, n_cp)
         data_base.dc_db[table_erp][idx] = n_cp
         pr = data_base.dc_db['provincia'][idx[:2]]
@@ -2122,7 +2160,7 @@ def insert_codigo_postal(data_base):
             u'empresa_id': empresa_id
         }
         dict_to_sql(data_base, dc_soc, table_db)
-
+    print("Saltados %d" % s)
 
 def insert_almacenes(data_base):
     table_db, table_erp, file_rg, idxs, l, n_registro = get_data(data_base, 'almacen', 'almacenes')
@@ -2707,7 +2745,7 @@ def insert_clientes(data_base):
         if not idx.strip():
             continue
         n_cliente += 1
-        if n_cliente % 100 == 0.:
+        if n_cliente % 1500 == 0.:
             log(idx, len(idxs), n_cliente)
         data_base.dc_db[table_erp][idx] = n_cliente
 
@@ -2846,7 +2884,7 @@ def insert_clientes(data_base):
     i = 0
     for sql_r in relacionados:
         i += 1
-        if i % 100 == 0.:
+        if i % 2500 == 0.:
             log('', len(relacionados), i)
         data_base.query(sql_r)
 
@@ -2895,7 +2933,7 @@ def insert_delegaciones(delegaciones_defecto_ls, data_base):
             continue
 
         n_cliente += 1
-        if n_cliente % 100 == 0.:
+        if n_cliente % 1500 == 0.:
             log(idx, len(idxs), n_cliente)
         data_base.dc_db[table_erp][idx] = n_cliente
 
@@ -2981,7 +3019,7 @@ def insert_delegaciones(delegaciones_defecto_ls, data_base):
     i = 0
     for sql_r in relacionados:
         i += 1
-        if i % 100 == 0.:
+        if i % 2500 == 0.:
             log('', len(relacionados), i)
         data_base.query(sql_r)
 
@@ -3161,7 +3199,7 @@ def insert_articulos(data_base):
         if not idx.strip():
             continue
         n += 1
-        if n % 1000 == 0.:
+        if n % 2000 == 0.:
             log(idx, len(idxs), n)
         (nombre_ar, ean, codigo_anterior, grupo, familia, sub_familia, nada, nada, tipo_articulo, tipo_iva,
          descatalogado, fecha_descatalogado, motivo_descatalogado, estocable, precio_ultima_compra, precio_medio_coste,
@@ -3258,7 +3296,7 @@ def insert_articulos(data_base):
     i = 0
     for sql_r in relacionados:
         i += 1
-        if i % 1000 == 0.:
+        if i % 2000 == 0.:
             log('', len(relacionados), i)
         data_base.query(sql_r)
 
@@ -4825,3 +4863,508 @@ def insert_facturasv(data_base):
         if i % 5000 == 0. or i == l:
             log('', l, i)
         data_base.query(sql_r)
+
+def insert_cobrosav(data_base):
+    table_db, table_erp, file_rg, idxs, l, n_registro = get_data(data_base, 'cobroalbaranventa', 'cobrosav')
+    log(table_erp, len(idxs))
+
+    if reset:
+        data_base.delete_all('cobroalbaranventa')
+        data_base.delete_where('relacionregistro', 'registro_padre=%d' % n_registro)
+
+    relacionados = list()
+    n = 0
+    for idx in idxs:
+        if not idx.strip():
+            continue
+
+        n += 1
+        if n % 1000 == 0. or n == l:
+            log(idx, l, n)
+        data_base.dc_db[table_erp][idx] = n
+
+        (cliente_, albaran_cancelado, fecha_emision, fecha_vencimiento, tipo, documento, vendedor, importe_cobro,
+         cobro_factura_relaci, tpv, traspasado, observaciones) = file_rg[idx]
+
+        cliente = data_base.dc_db['clientes'].get(cliente_, data_base.dc_db['clientes']['00001'])
+        if cliente is None:
+            raise ValueError(cliente_, idx)
+
+
+        i_relacion(data_base, [albaran_cancelado], 'albaranventa', n, n_registro, relacionados, 'alb-venta')
+        albaran = data_base.dc_db['alb-venta'].get(albaran_cancelado)
+        vendedor = data_base.dc_db['personal'].get(vendedor, data_base.dc_db['personal']['001'])
+        tipo = data_base.dc_db['opciontipo'].get(str(tipo)+"|tipo_cartera")
+
+
+        dc = {
+            u'id': sanitize(n),
+            u'codigo': sanitize(idx),
+            u'empresa_id': empresa_id,
+            u'albaran_id': sanitize(albaran),
+            u'cliente_id': sanitize(cliente),
+            u'referencia': sanitize(documento),
+            u'fecha_emision': sanitize(parser_date(fecha_emision)),
+            u'fecha_vencimiento': sanitize(parser_date(fecha_vencimiento)),
+            u'importe': sanitize(importe_cobro),
+            u'tipo_id': sanitize(tipo),
+            u'traspasado': sanitize(traspasado=='S'),
+            u'vendedor_id': sanitize(vendedor),
+            u'observaciones': sanitize(stripRtf(observaciones))
+
+        }
+
+        dict_to_sql(data_base, dc, table_db)
+
+    l = len(relacionados)
+    log('Relacionados ' + table_db, l)
+    i = 0
+    for sql_r in relacionados:
+        i += 1
+        if i % 5000 == 0. or i == l:
+            log('', l, i)
+        data_base.query(sql_r)
+
+def insert_cobrosfv(data_base):
+    table_db, table_erp, file_rg, idxs, l, n_registro = get_data(data_base, 'cobro', 'cobros')
+    log(table_erp, len(idxs))
+
+    if reset:
+        data_base.delete_all('cobro')
+        data_base.delete_where('relacionregistro', 'registro_padre=%d' % n_registro)
+
+    relacionados = list()
+    n = 0
+    for idx in idxs:
+        if not idx.strip():
+            continue
+
+        n += 1
+        if n % 1000 == 0. or n == l:
+            log(idx, l, n)
+        data_base.dc_db[table_erp][idx] = n
+
+        (cliente_, vendedor, fecha_emision, fecha_vencimiento, documento, tipo, libre, importe_cobro, cb_fras, fecha_remesa,
+         nuestro_banco, estado_, codigo_remesa, gastos_devolucion, fecha_devolucion, cuenta_contable_gast, observaciones,
+         contabilizado, contabilizada_devolu, devolucion_soluciona, destino, cb_dev, motivo_devolucion, iban, swift,
+         cobro_de_albaran, cobro_de_origen, cb_cobd, gastos_repercutidos, gastos_repercutidos, importe_cobro_divisa,
+         gastos_devolucion_di, divisa, cambio_divisa, sociedad) = file_rg[idx]
+
+        cliente = data_base.dc_db['clientes'].get(cliente_, data_base.dc_db['clientes']['00001'])
+        if cliente is None:
+            raise ValueError(cliente_, idx)
+
+
+        i_relacion(data_base, cb_fras, 'facturaemitida', n, n_registro, relacionados, 'facturas-e')
+        divisa = data_base.dc_db['divisas'].get(divisa, data_base.dc_db['divisas']['001'])
+        sociedad = data_base.dc_db['sociedades'].get(sociedad, data_base.dc_db['sociedades']['00'])
+        vendedor = data_base.dc_db['personal'].get(vendedor, data_base.dc_db['personal']['001'])
+        nuestro_banco = data_base.dc_db['bancos'].get(nuestro_banco)
+        tipo = data_base.dc_db['opciontipo'].get(str(tipo)+"|tipo_cartera")
+        if estado_ == 'S':
+            estado_ = 'P'
+        estado = data_base.dc_db['opciontipo'].get(str(estado_)+"|estado_cartera")
+        if estado is None:
+            raise ValueError(estado_)
+        if cobro_de_albaran or cobro_de_origen or destino:
+            raise ValueError(cobro_de_albaran, cobro_de_origen, destino)
+
+
+        dc = {
+            u'id': sanitize(n),
+            u'codigo': sanitize(idx),
+            u'empresa_id': empresa_id,
+            u'cambio_divisa': sanitize(cambio_divisa),
+            u'cliente_id': sanitize(cliente),
+            u'contabilizada_devolucion': sanitize(contabilizada_devolu == 'S'),
+            u'contabilizado': sanitize(contabilizado == 'S'),
+            u'devolucion_solucionada': sanitize(devolucion_soluciona in [1,'S']),
+            u'divisa_id': sanitize(divisa),
+            u'referencia': sanitize(documento),
+            u'estado_id': sanitize(estado),
+            u'fecha_devolucion': sanitize(parser_date(fecha_devolucion)),
+            u'fecha_emision': sanitize(parser_date(fecha_emision)),
+            u'fecha_remesa': sanitize(parser_date(fecha_remesa)),
+            u'fecha_vencimiento': sanitize(parser_date(fecha_vencimiento)),
+            u'gastos_devolucion': sanitize(gastos_devolucion),
+            u'gastos_repercutidos': sanitize(gastos_repercutidos),
+            u'iban': sanitize(iban),
+            u'importe': sanitize(importe_cobro),
+            u'motivo_devolucion': sanitize(motivo_devolucion),
+            u'banco_id': sanitize(nuestro_banco),
+            u'sociedad_id': sanitize(sociedad),
+            u'tipo_id': sanitize(tipo),
+            u'observaciones': sanitize(stripRtf(observaciones)),
+            u'vendedor_id': sanitize(vendedor)
+
+        }
+
+        dict_to_sql(data_base, dc, table_db)
+
+    l = len(relacionados)
+    log('Relacionados ' + table_db, l)
+    i = 0
+    for sql_r in relacionados:
+        i += 1
+        if i % 5000 == 0. or i == l:
+            log('', l, i)
+        data_base.query(sql_r)
+
+def insert_remesasv(data_base):
+    table_db, table_erp, file_rg, idxs, l, n_registro = get_data(data_base, 'remesacobro', 'remesas')
+    log(table_erp, len(idxs))
+
+    if reset:
+        data_base.delete_all('remesacobro')
+        data_base.delete_where('relacionregistro', 'registro_padre=%d' % n_registro)
+
+    relacionados = list()
+    n = 0
+    for idx in idxs:
+        if not idx.strip():
+            continue
+
+        n += 1
+        if n % 1000 == 0. or n == l:
+            log(idx, l, n)
+        data_base.dc_db[table_erp][idx] = n
+
+        (banco, fecha_remesa, tipo_documentos_, rm_cob, total_remesa, gastos_financieros, contabilizada, observaciones,
+         fecha_de_subida_a_ba, fecha_de_vencimiento, cuaderno_enviado, serie) = file_rg[idx]
+
+        if fecha_de_vencimiento is None:
+            fecha_de_vencimiento = fecha_remesa
+
+        i_relacion(data_base, rm_cob, 'cobro', n, n_registro, relacionados, 'cobros')
+        divisa = data_base.dc_db['divisas']['001']
+        sociedad = data_base.dc_db['sociedades']['00']
+        banco = data_base.dc_db['bancos'].get(banco, data_base.dc_db['bancos']['01'])
+        serie = data_base.dc_db['series'].get(serie, data_base.dc_db['series']['000'])
+        tipo_documentos = data_base.dc_db['opciontipo'].get(str(tipo_documentos_)+"|tipo_cartera", data_base.dc_db['opciontipo']["O|tipo_cartera"])
+        if tipo_documentos is None:
+            raise ValueError(tipo_documentos_)
+
+
+
+        dc = {
+            u'id': sanitize(n),
+            u'codigo': sanitize(idx),
+            u'empresa_id': empresa_id,
+            u'banco_id': sanitize(banco),
+            u'contabilizada': sanitize(contabilizada=='S'),
+            u'cuaderno': sanitize(cuaderno_enviado),
+            u'fecha_subida_banco': sanitize(parser_date(fecha_de_subida_a_ba)),
+            u'fecha_vencimiento': sanitize(parser_date(fecha_de_vencimiento)),
+            u'fecha_remesa': sanitize(parser_date(fecha_remesa)),
+            u'gastos_financieros': sanitize(gastos_financieros),
+            u'serie_id': sanitize(serie),
+            u'tipo_id': sanitize(tipo_documentos),
+            u'divisa_id': sanitize(divisa),
+            u'sociedad_id': sanitize(sociedad),
+            u'total': sanitize(total_remesa)
+
+        }
+
+        dict_to_sql(data_base, dc, table_db)
+
+    l = len(relacionados)
+    log('Relacionados ' + table_db, l)
+    i = 0
+    for sql_r in relacionados:
+        i += 1
+        if i % 5000 == 0. or i == l:
+            log('', l, i)
+        data_base.query(sql_r)
+
+def insert_inventario(data_base):
+    def _lineas(lsta, nt, rels, rgs_articulos):
+
+        table_rel = 'inventariolinea'
+        orden = 0
+        opciones = dict()
+        for lnd in lsta :
+            orden += 1
+            (cdar, unidades, precio, unidades_anteriores) = lnd[:4]
+            deno=rgs_articulos[cdar][0]
+            cdar = data_base.dc_db['articulos'].get(cdar)
+            if cdar is None:
+                continue
+            id_d = get_id(data_base, table_rel)
+            dcln = {
+                u'id': sanitize(id_d),
+                u'empresa_id': '1',
+                u'inventario_id': sanitize(nt),
+                u'articulo_id': sanitize(cdar),
+                u'nombre': sanitize(deno),
+                u'unidades': sanitize(unidades),
+                u'precio_coste': sanitize(precio),
+                u'unidades_anteriores': sanitize(unidades_anteriores),
+                u'orden': sanitize(orden),
+            }
+            rels.append(dict_to_sql(data_base, dcln, table_rel, False))
+        return opciones
+
+    table_db, table_erp, file_rg, idxs, l, n_registro = get_data(data_base, 'inventario', 'inventario')
+    log(table_erp, len(idxs))
+
+    if reset:
+        data_base.delete_all('inventario')
+        data_base.delete_all('inventariolinea')
+        data_base.delete_where('relacionregistro', 'registro_padre=%d' % n_registro)
+
+    ruta_c = PATH + 'articulos'
+    rgs_articulos = bkopen(ruta_c, huf=0)
+
+    relacionados = list()
+    n = 0
+    for idx in idxs:
+        if not idx.strip():
+            continue
+
+        n += 1
+        if n % 1000 == 0. or n == l:
+            log(idx, l, n)
+        data_base.dc_db[table_erp][idx] = n
+
+        (fecha, operario, almacen_del_recuento, descripcion, in_lna, observaciones, valoracion_total_del,
+         unidades_de_diferenc, aplicado, fecha_de_aplicacion, hora_de_apliacicon, in_hist, in_tz) = file_rg[idx]
+
+        almacen_del_recuento = data_base.dc_db['almacenes'][almacen_del_recuento]
+
+        _lineas(in_lna, n, relacionados, rgs_articulos)
+
+        fa = parser_date(fecha_de_aplicacion)
+        if fa is not None:
+            if not hora_de_apliacicon:
+                hora_de_apliacicon = '00:00:00'
+            fa + ' ' + hora_de_apliacicon
+        dc = {
+            u'id': sanitize(n),
+            u'codigo': sanitize(idx),
+            u'empresa_id': empresa_id,
+            u'almacen_recuento_id': sanitize(almacen_del_recuento),
+            u'aplicado': sanitize(aplicado == 'S'),
+            u'descripcion': sanitize(descripcion),
+            u'fecha': sanitize(parser_date(fecha)),
+            u'fecha_aplicacion': sanitize(fa),
+            u'observaciones': sanitize(stripRtf(observaciones)),
+            u'unidades_diferencia': sanitize(unidades_de_diferenc),
+            u'valoracion_total': sanitize(valoracion_total_del)
+
+        }
+
+        dict_to_sql(data_base, dc, table_db)
+
+    l = len(relacionados)
+    log('Relacionados ' + table_db, l)
+    i = 0
+    for sql_r in relacionados:
+        i += 1
+        if i % 5000 == 0. or i == l:
+            log('', l, i)
+        data_base.query(sql_r)
+
+def insert_trasvase(data_base):
+    def _lineas(lsta, nt, rels, rgs_articulos):
+
+        table_rel = 'trasvaselinea'
+        orden = 0
+        opciones = dict()
+        for lnd in lsta :
+            orden += 1
+            (cdar, unidades_pr, unidades_en, unidades_re, precio, almacen_origen, estado) = lnd[:7]
+            deno=rgs_articulos[cdar][0]
+            cdar = data_base.dc_db['articulos'].get(cdar)
+            if cdar is None:
+                continue
+            id_d = get_id(data_base, table_rel)
+            almacen_origen = data_base.dc_db['almacenes'][almacen_origen]
+            if estado == 'P':estado='PE'
+            if estado == 'E':estado='ME'
+            if estado == 'R':estado='MR'
+            estado = data_base.dc_db['opciontipo'][estado+'|estado_trasvase']
+            dcln = {
+                u'id': sanitize(id_d),
+                u'empresa_id': '1',
+                u'trasvase_id': sanitize(nt),
+                u'articulo_id': sanitize(cdar),
+                u'nombre': sanitize(deno),
+                u'unidades_previstas': sanitize(unidades_pr),
+                u'unidades_enviadas': sanitize(unidades_en),
+                u'unidades_recibidas': sanitize(unidades_re),
+                u'precio_coste': sanitize(precio),
+                u'almacen_origen_id': sanitize(almacen_origen),
+                u'estado_id': sanitize(estado),
+                u'orden': sanitize(orden),
+            }
+            rels.append(dict_to_sql(data_base, dcln, table_rel, False))
+        return opciones
+
+    table_db, table_erp, file_rg, idxs, l, n_registro = get_data(data_base, 'trasvase', 'trasvases')
+    log(table_erp, len(idxs))
+
+    if reset:
+        data_base.delete_all('trasvase')
+        data_base.delete_all('trasvaselinea')
+        data_base.delete_where('relacionregistro', 'registro_padre=%d' % n_registro)
+
+    ruta_c = PATH + 'articulos'
+    rgs_articulos = bkopen(ruta_c, huf=0)
+
+    relacionados = list()
+    n = 0
+    for idx in idxs:
+        if not idx.strip():
+            continue
+
+        n += 1
+        if n % 1000 == 0. or n == l:
+            log(idx, l, n)
+        data_base.dc_db[table_erp][idx] = n
+
+        (fecha_creacion, almacen_destino, pedido_por, tv_lna, observaciones, total_valor_coste, hora_creacion,
+         pedido_almacen, estado, fecha_envio, hora_envio, fecha_recepcion, hora_recepcion, descripcion_trasvase,
+         tv_tz, tv_hist) = file_rg[idx]
+
+        almacen_destino = data_base.dc_db['almacenes'][almacen_destino]
+        if estado == 'P':estado='PE'
+        if estado == 'E':estado='ME'
+        if estado == 'R':estado='MR'
+        estado = data_base.dc_db['opciontipo'][estado+'|estado_trasvase']
+
+        _lineas(tv_lna, n, relacionados, rgs_articulos)
+
+        fc = parser_date(fecha_creacion)
+        if fc is not None:
+            if not hora_creacion:
+                hora_creacion = '00:00:00'
+            fc + ' ' + hora_creacion
+
+        fe = parser_date(fecha_recepcion)
+        if fe is not None:
+            if not hora_envio:
+                hora_envio = '00:00:00'
+            fe + ' ' + hora_envio
+
+        fr = parser_date(fecha_recepcion)
+        if fr is not None:
+            if not hora_recepcion:
+                hora_recepcion = '00:00:00'
+            fr + ' ' + hora_recepcion
+
+        dc = {
+            u'id': sanitize(n),
+            u'codigo': sanitize(idx),
+            u'empresa_id': empresa_id,
+            u'almacen_destino_id': sanitize(almacen_destino),
+            u'descripcion_trasvase': sanitize(descripcion_trasvase),
+            u'estado_id': sanitize(estado),
+            u'fecha_creacion': sanitize(fc),
+            u'fecha_envio': sanitize(fe),
+            u'fecha_recepcion': sanitize(fr),
+            u'observaciones': sanitize(stripRtf(observaciones)),
+            u'pedido_por': sanitize(pedido_por),
+            u'total_valor_coste': sanitize(total_valor_coste)
+
+        }
+
+        dict_to_sql(data_base, dc, table_db)
+
+    l = len(relacionados)
+    log('Relacionados ' + table_db, l)
+    i = 0
+    for sql_r in relacionados:
+        i += 1
+        if i % 5000 == 0. or i == l:
+            log('', l, i)
+        data_base.query(sql_r)
+
+def insert_pedidoalmacen(data_base):
+    def _lineas(lsta, nt, rels):
+
+        table_rel = 'pedidoalmacenlinea'
+        orden = 0
+        opciones = dict()
+        for lnd in lsta :
+            orden += 1
+            (cdar, nombre, unidades, unidades_servidas, unidades_re) = lnd[:5]
+            estado_ = lnd[8]
+
+            cdar = data_base.dc_db['articulos'].get(cdar)
+            if cdar is None:
+                continue
+            id_d = get_id(data_base, table_rel)
+            estado_ = data_base.dc_db['opciontipo'][estado_+'|estado_pedido']
+            dcln = {
+                u'id': sanitize(id_d),
+                u'empresa_id': '1',
+                u'pedido_id': sanitize(nt),
+                u'articulo_id': sanitize(cdar),
+                u'nombre': sanitize(nombre),
+                u'unidades': sanitize(unidades),
+                u'unidades_servidas': sanitize(unidades_servidas),
+                u'estado_id': sanitize(estado_),
+                u'orden': sanitize(orden),
+            }
+            rels.append(dict_to_sql(data_base, dcln, table_rel, False))
+        return opciones
+
+    table_db, table_erp, file_rg, idxs, l, n_registro = get_data(data_base, 'pedidoalmacen', 'pedidos_am')
+    log(table_erp, len(idxs))
+
+    if reset:
+        data_base.delete_all('pedidoalmacen')
+        data_base.delete_all('pedidoalmacenlinea')
+        data_base.delete_where('relacionregistro', 'registro_padre=%d' % n_registro)
+
+
+    relacionados = list()
+    n = 0
+    for idx in idxs:
+        if not idx.strip():
+            continue
+
+        n += 1
+        if n % 1000 == 0. or n == l:
+            log(idx, l, n)
+        data_base.dc_db[table_erp][idx] = n
+
+        (descripcion, fecha, tecnico, almacen_destino, serie, pam_lna, observaciones, obra, estado, presupuesto,
+         pam_hist, usuario) = file_rg[idx]
+
+        tecnico = data_base.dc_db['personal'][tecnico]
+        almacen_destino = data_base.dc_db['almacenes'][almacen_destino]
+        serie = data_base.dc_db['series'][serie]
+        estado = data_base.dc_db['opciontipo'][estado+'|estado_pedido']
+
+        _lineas(pam_lna, n, relacionados)
+
+        dc = {
+            u'id': sanitize(n),
+            u'codigo': sanitize(idx),
+            u'empresa_id': empresa_id,
+            u'almacen_destino_id': sanitize(almacen_destino),
+            u'descripcion': sanitize(descripcion),
+            u'estado_id': sanitize(estado),
+            u'fecha': sanitize(parser_date(fecha)),
+            u'observaciones': sanitize(stripRtf(observaciones)),
+            u'serie_id': sanitize(serie),
+            u'tecnico_id': sanitize(tecnico)
+
+        }
+        dict_to_sql(data_base, dc, table_db)
+
+    l = len(relacionados)
+    log('Relacionados ' + table_db, l)
+    i = 0
+    for sql_r in relacionados:
+        i += 1
+        if i % 5000 == 0. or i == l:
+            log('', l, i)
+        data_base.query(sql_r)
+
+
+if __name__ == '__main__':
+    db = Database(0)
+    db.view_blank_tables()
+    db.close()

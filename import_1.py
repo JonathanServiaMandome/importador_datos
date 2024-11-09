@@ -3,7 +3,7 @@
 from import_functions import *
 
 if __name__ == '__main__':
-    levels = [1,2,3]
+    levels = [2,3,4,5]
     for level in levels:
         data_base = Database(level)
         if level == 1:
@@ -64,6 +64,13 @@ if __name__ == '__main__':
             insert_presupuestos(data_base)
             insert_pedidocliente(data_base)
             insert_albaranventa(data_base)
-        elif level == 4:
             insert_facturasv(data_base)
+        elif level == 4:
+            insert_cobrosav(data_base)
+            insert_cobrosfv(data_base)
+            insert_remesasv(data_base)
+        elif level == 5:
+            insert_inventario(data_base)
+            insert_trasvase(data_base)
+            insert_pedidoalmacen(data_base)
         data_base.close()

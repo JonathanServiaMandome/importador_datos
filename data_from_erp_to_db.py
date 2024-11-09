@@ -230,7 +230,12 @@ def import_types_esp(data_base):
 if __name__ =='__main__':
     PATH = 'D:/Server/Applications/tesein/Dcts'
     file_rg = bkopen(PATH, huf=1)
-    archivo = 'facturas-e'
+    archivo = 'vehiculos'
+
+    ruta_rgs = PATH + archivo
+    rgs = bkopen(ruta_rgs, huf=0)
+    print("Número de registros %d" % len(rgs.keys()))
+
     nombre, n, campos, n2, n3, n4, n5, n6, n7, n8, n9, n10, n11 = file_rg[archivo]
     i=0
     ls=[]
